@@ -515,7 +515,7 @@
       "use strict";
 
       var API_URL = "https://fixoraa-universal-backend.onrender.com/api/groq";
-      var MODEL = "llama-3.1-8b-instant";
+      var MODEL = "openai/gpt-oss-20b";
       var captionPlatform = "Instagram";
       var captionOutput = [];
       var hashtagOutput = { niche: [], growth: [], broad: [] };
@@ -669,12 +669,15 @@
         }
       }
 
-      function callGroq(prompt) {
+      function callGroq(prompt, attempt) {
+        attempt = attempt || 0;
         return fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: MODEL,
+            max_tokens: 2000,
+            reasoning_effort: "low",
             messages: [{ role: "user", content: prompt }]
           })
         }).then(function (response) {
@@ -686,6 +689,12 @@
           var text = parseApiText(data);
           if (!text) throw new Error("No text was returned. Please try a more detailed prompt.");
           return text;
+        }).catch(function (err) {
+          if (attempt < 2) {
+            return new Promise(function (resolve) { setTimeout(resolve, 2000 * (attempt + 1)); })
+              .then(function () { return callGroq(prompt, attempt + 1); });
+          }
+          throw err;
         });
       }
 
